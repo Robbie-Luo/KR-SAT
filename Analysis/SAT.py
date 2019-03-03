@@ -1,6 +1,70 @@
+#!/usr/bin/env python
 import random
 import sys
+import time
 import numpy as np
+
+trackback_times=0
+class SATSolver:
+    def __init__(self, cnf, heuristic):
+        self.cnf = cnf
+        self.heuristic = heuristic
+        self.clauses = []
+        self.literals = []
+        self.solution = []
+        self.time = 0
+        self.count = 0
+
+    def initialize(self):
+        for line in self.cnf:
+            if line.startswith('p'):
+                continue
+            clause = [int(x) for x in line[:-2].split()]
+            for l in clause:
+                if abs(l) not in self.literals:
+                    self.literals.append(abs(l))
+            self.clauses.append(clause)
+
+    def solve(self):
+        start = time.time()
+        backtracking.count = 0
+        self.solution = backtracking(self.clauses, [], self.heuristic)
+        end = time.time()
+        # print("Heuristic: "+str(self.heuristic))
+        self.time = end - start
+
+        self.count = backtracking.count
+
+    def get_results(self):
+        S = [x for x in sorted(self.solution) if x > 0]
+        res = ''.join([(str(s)[-1]) for s in S])
+        return res, self.time, self.count
+
+    def show_results(self):
+        print("Time: {:.4f}".format(self.time))
+        print("Reursions: {}".format(self.count))
+        if self.solution:
+            S= [x for x in sorted(self.solution) if x > 0]
+            print(np.array([int(str(s)[-1]) for s in S]).reshape(9, 9))
+        else:
+            print('UNSATISFIABLE')
+
+
+def main():
+    heuristic, path = read_parameters()
+    f = open(path, "r")
+    cnf = f.readlines()
+    solver = SATSolver(cnf, heuristic)
+    solver.initialize()
+    solver.solve()
+    solver.show_results()
+
+def VariableNum(line):
+    count=0
+    for i in range(0, len(line)):
+        if line[i].isdigit():
+            count+=1
+    return 81-count
 
 def getEntropy(line):
     # line = '.94...13..............76..2.8..1.....32.........2...6.....5.4.......8..7..63.4..8'
@@ -32,11 +96,27 @@ def getEntropy(line):
     H=0
     for i in range(9):
         for j in range(9):
-            if len(S[i][j])==1:
-                H = H + 1
-            # H = H + np.log(len(S[i][j]))
+            # if len(S[i][j])==1:
+            #     H = H + 1
+            H = H + np.log(len(S[i][j]))
     return H
 
+def read_parameters():
+    if len(sys.argv) != 3:
+        sys.exit("Use:python SAT.py <option> <cnf_file>")
+    heuristic = jeroslow_wang
+    option = sys.argv[1]
+    if "1" in option :
+        heuristic = most_often
+        print("Heuristic:Default")
+    if "2" in option:
+        heuristic = jeroslow_wang_2_sided
+        print("Heuristic:jeroslow_wang_2_sided")
+    if "3" in option :
+        heuristic = DLIS
+        print("Heuristic:DLIS")
+    path=sys.argv[2]
+    return heuristic, path
 
 def bcp(formula, unit):
     modified = []
@@ -133,7 +213,6 @@ def unit_propagation(formula):
 
 
 def backtracking(formula, assignment, heuristic):
-    # print assignment
     backtracking.count += 1
     formula, pure_assignment = pure_literal(formula)
     formula, unit_assignment = unit_propagation(formula)
@@ -149,24 +228,6 @@ def backtracking(formula, assignment, heuristic):
         solution = backtracking(bcp(formula, -variable), assignment + [-variable], heuristic)
 
     return solution
-
-
-# Branching heuristics
-
-def heuristics_dict(heuristic):
-    heuristics = {
-        'JW'    : jeroslow_wang,
-        'RAN'   : random_selection,
-        'MO'    : most_often,
-        'SPC'   : shortest_positive_clause,
-        'FRE'   : freeman,
-        'JW2S'  : jeroslow_wang_2_sided
-    }
-    try:
-        return heuristics[heuristic]
-    except:
-        sys.exit("ERROR: '{}' Not valid heuristic.".format(heuristic) +
-                 "\nValid heuristics: {}".format(heuristics.keys()))
 
 
 def random_selection(formula):
@@ -186,20 +247,7 @@ def most_often(formula):
     counter = get_counter(formula)
     return max(counter, key=counter.get)
 
-
-def shortest_positive_clause(formula):
-    min_len = sys.maxint
-    best_literal = 0
-    for clause in formula:
-        negatives = sum(1 for literal in clause if literal < 0)
-        if not negatives and len(clause) < min_len:
-            best_literal = clause[0]
-            min_len = len(clause)
-    if not best_literal:
-        return formula[0][0]
-    return best_literal
-
-def freeman(formula):
+def DLIS(formula):
     counter = get_difference_counter(formula)
     max_p_literal = max(counter, key=counter.get)
     max_n_literal = min(counter, key=counter.get)
@@ -207,28 +255,5 @@ def freeman(formula):
         return max_p_literal
     return max_n_literal
 
-def max_key_value(counter):
-    keys = counter.keys()
-    values = counter.values()
-    return keys[values.index(max(values))]
-
-
-def read_parameters():
-    if len(sys.argv) != 3:
-        sys.exit("Use:python SAT.py <option> <cnf_file>")
-    heuristic = jeroslow_wang
-    option = sys.argv[1]
-    if "1" in option :
-        heuristic = random_selection
-        print("Heuristic:random_selection")
-    if "2" in option:
-        heuristic = jeroslow_wang
-        print("Heuristic:jeroslow_wang")
-    if "3" in option :
-        heuristic = most_often
-        print("Heuristic:most_often")
-    if "4" in option:
-        heuristic = jeroslow_wang_2_sided
-        print("Heuristic:jeroslow_wang_2_sided")
-    path=sys.argv[2]
-    return heuristic, path
+if __name__ == "__main__":
+    main()
