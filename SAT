@@ -1,0 +1,2 @@
+#!/bin/bash
+python SAT.py $1 $2
