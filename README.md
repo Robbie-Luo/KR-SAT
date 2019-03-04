@@ -4,7 +4,7 @@ SAT solver for knowledge representation
 Example for running the program
 
 ```bash
-python SAT.py -S1 sudoku-test.py
+bash SAT -S1 sudoku-test.py
 ```
 
 Strategy list:
